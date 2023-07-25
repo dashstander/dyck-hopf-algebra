@@ -1,51 +1,72 @@
+from copy import deepcopy
 
 
-def parse_tuple(structure, parent=None):
-    if parent is None:
-        parent = Node(parent)       
-    for substructure in structure:
-        child = parent.add_child()
-        parse_tuple(substructure, child)
-    return parent
-
-        
-class Node:
+def to_tuple(parens):
+    """
+    """
+    if parens == []:
+        return ()
+    else:
+        return tuple([to_tuple(inner) for inner in parens])
     
-    def __init__(self, parent):
+
+def to_list(parens):
+    if parens == ():
+        return []
+    else:
+        return [to_list(inner) for inner in parens]
+    
+
+
+class Tree:
+
+    """
+    """
+    
+    def __init__(self, structure, parent):
         self.parent = parent
-        self.children = list()
-        self.direct_children = 0
-        
-    def add_child(self):
-        child = Node(self)
-        self.children.append(child)
-        self.direct_children += 1
-        return child
+        self.structure = to_tuple(structure)
+        self.children = [
+            Tree(sub, self) for  sub in structure
+        ]
     
+    @property
     def num_children(self):
         if self.direct_children == 0:
             return 0
         else:
-            return self.direct_children + sum([child.num_children() for child in self.children])
-        
-    def __getitem__(self, index: int):
-        return self.children[index]
+            return (
+                self.direct_children 
+                + sum([child.num_children for child in self.children])
+            )
     
+    def cut(self, index: int) -> tuple:
+        branch = Tree(self.children[index].structure, None)
+        cut_structure = deepcopy(self.structure)
+        cut_structure.pop(index)
+        root = Tree(cut_structure, deepcopy(self.parent), self.value)
+        return root, branch
+
+    def __getitem__(self, index):
+        if isinstance(index, int):
+            return self.children[index]
+        elif isinstance(index, tuple):
+            node = self
+            for i in index:
+                node = node[i]
+            return node
+        else:
+            raise NotImplementedError
+
     def __repr__(self):
         if len(self.children) == 0:
             return "()"
         else:
-            return "(" + "".join(str(child) for child in self.children) + ")"
+            return (
+                "("
+                + "".join(str(child) for child in self.children) 
+                + ")"
+            )
         
-        
-
-class Tree:
-    
-    def __init__(self, root):
-        self.root = root
-        
-    @classmethod
-    def from_structure(cls, structure: tuple[int]):
-        return cls(parse_tuple(structure))
-        
-
+    def __hash__(self):
+        return hash(str(self))
